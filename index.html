@@ -1,0 +1,392 @@
+<html>
+
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://fonts.googleapis.com/css?family=EB+Garamond" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.10.2/p5.js"></script>
+  <!-- <script src="https://unpkg.com/ml5@0.5.0/dist/ml5.min.js"></script> -->
+  <script src="lib/p5.speech.js"></script>
+  <script src="lib/p5.sound.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/pose@0.8/dist/teachablemachine-pose.min.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: black;
+      max-width: 30em;
+      overflow: hidden; 
+    }
+	
+    select,
+    button {
+      font-size: 100%;
+      max-width: 15em;
+    }
+
+	.container::-webkit-scrollbar {display:none}
+
+    #title {
+      font-size: 120%;
+      font-weight: bold;
+    }
+
+    #about>p {
+      margin: 0.5em 0;
+    }
+
+    .section {
+      border: 1px solid #ccc;
+      margin: 0.5em 0;
+      padding: 0.5em;
+      border-radius: 0.5em;
+      font-family: 'EB Garamond', serif;
+      background-color: rgb(245, 245, 245);
+    }
+    #sketch-div{
+      position: absolute;;
+      width: 100%;
+      height: 100%;
+    }
+	.myButton {
+		background-color:#f9f9f9;
+		border-radius:13px;
+		border:1px solid #dcdcdc;
+		display:inline-block;
+		cursor:pointer;
+		color:#666666;
+		font-family:Arial;
+		font-size:15px;
+		margin-left:10px;
+		padding:10px 27px;
+		text-decoration:none;
+		text-shadow:0px 1px 0px #ffffff;
+	}
+	.myButton:hover {
+		background-color:#e9e9e9;
+	}
+	.myButton:active {
+		position:relative;
+		top:1px;
+	}
+
+    #poetryContent{
+      margin-left: 600px;
+      height: 100%;
+      width: 100%;
+    }
+    #poem {
+      max-height: 15em;
+      overflow: scroll;
+    }
+
+  </style>
+
+
+	<script type="text/javascript">
+	let totalTime = 0;
+	let inCircle = 1;
+	var int = self.setInterval("clock()",1000);
+	function clock()
+	{ 
+	  totalTime++;
+	  if(totalTime == 5 && inCircle == 0 && isSpeak == false){
+	  	mySound.play();
+	  	isSpeak == false;
+	  }
+	  if(totalTime == 20 && inCircle == 0 && isSpeak == false){
+	  	speakNew()
+	  	inCircle = 1;
+	  }
+	}
+
+	 function speakNew()
+	 {
+	    poseChangeRegenerate(predictPoseResult);
+	    isSpeak = true;
+	    speechVoice.speak(currentPoetryString);
+	    speechVoice.onEnd = speakEnd;
+	 }
+
+	</script>
+
+  <script>
+  	let video;
+  	var allSeeds = new Array();
+  	var currentPoetryString = "";
+  	var currentSeed = "";
+
+  	// ml5 + posenet
+  	let allClasses;
+  	let poseResult;
+  	let poseModel;
+  	let predictPoseResult;
+  	let context;
+
+  	let mySound;
+
+  	// speech recognition
+  	var speechRec = new p5.SpeechRec('en-US',gotSpeech);
+  	speechRec.continuous = true;
+  	speechRec.interimResults = false;
+  	// text to speech
+  	speechVoice = new p5.Speech();
+  	speechVoice.setRate(0.6);
+  	let isSpeak = false;
+
+  	async function modelinit() {
+  		const URL = "https://teachablemachine.withgoogle.com/models/U-HghRrcm/";
+  		const modelURL = URL + "model.json";
+  		const metadataURL = URL + "metadata.json";
+  		poseModel = await tmPose.load(modelURL, metadataURL);
+  		allClasses = poseModel.getTotalClasses();
+  		console.log(allClasses)
+  	}
+
+  	async function predict() {
+  		const {
+  			pose,
+  			posenetOutput
+  		} = await poseModel.estimatePose(video.elt);
+  		const predictions = await poseModel.predict(posenetOutput)
+  		let highProbability = 0
+  		let highIndex = 0
+  		predictions.forEach((item, index)=> {
+  			if (item.probability > highProbability) {
+  				highProbability = item.probability
+  				highIndex = index
+  			}
+  		})
+  		poseResult = pose
+  		predictPoseResult = predictions[highIndex].className
+
+  		//console.log(highProbability,predictPoseResult);
+  	}
+
+	function preload() {
+	  mySound = loadSound('assets/ding.mp3');
+	}
+
+  	function setup(){
+  		var canvas = createCanvas(displayWidth,displayHeight);
+  		canvas.parent('sketch-div');
+  		context = canvas.elt.getContext('2d')
+  		video = createCapture(VIDEO);
+  		video.hide();
+  		background(0);
+
+  		// speech
+  		speechRec.start();
+  		speechRec.onEnd = speechRecEnd;
+  		modelinit();
+
+  	}
+
+ 	async function draw(){
+  		background(0,20);
+  		fill(255);
+  		ellipse(mouseX, mouseY,20,20);
+	    push()
+	    translate(width*0.2, height*0.2);
+	    scale(0.5, 0.5);
+		if (poseResult) {
+		   const minPartConfidence = 0.5;
+		   tmPose.drawSkeleton(poseResult.keypoints, minPartConfidence, context); 
+		}
+		pop()
+
+		fill(255)
+		textSize(22)
+		text(predictPoseResult, 20, 40)
+
+		fill(103,216,239)
+		textSize(36)
+		text(currentPoetryString, 100, 100,displayWidth/1.5, displayHeight)
+		
+		//打开posenet==================
+		if(allClasses>0)
+		{
+  		await predict()
+  		}
+  	}
+
+  	function keyPressed() {
+	  if (keyCode === LEFT_ARROW) {
+	    stopSpeak()
+	  } else {
+	  }
+	}
+
+  	// begin speak
+  	function gotSpeech(){
+  		var resultWord = speechRec.resultString.split(' ').pop();
+  		if(isSpeak == true) return;
+	  	if(allSeeds.length > 0){
+	  		if (allSeeds.indexOf(resultWord) >-1) { // change seed of poetry base on speech
+	  			poseChangeRegenerate(resultWord);
+	  		}else if(resultWord =='speech' && isSpeak == false){
+	  			isSpeak = true;
+	  			speechVoice.speak(currentPoetryString);
+	  			speechVoice.onEnd = speakEnd;
+	  			speechVoice.onStart = speakBegin;
+	  		}else if(resultWord =='stop'){
+	  			speechVoice.stop()
+	  		}
+	  	}
+	  	//console.log(speechRec.resultString.split(' ').pop());
+	}
+
+	// speak end
+	function speakEnd(){
+		console.log("totalTime==="+totalTime);
+		if(totalTime < 60) {
+			regenerate();
+			inCircle = 1;
+			isSpeak = true;
+	  		speechVoice.speak(currentPoetryString);
+	  		speechVoice.onEnd = speakEnd;
+	  		speechVoice.onStart = speakBegin;
+
+		}else{
+			totalTime = 0;
+			inCircle = 0;
+			isSpeak = false;
+		}
+		console.log("speechEnd================")
+	}
+
+	function speakBegin(){
+	}
+
+	// speechRech end
+	function speechRecEnd(){
+		speechRec.start();
+	}
+
+	// stop speak 
+	function stopSpeak(){
+		isSpeak = false;
+	  	speechVoice.stop()
+	}
+
+	function stopMotion(){
+		clearInterval() 
+	}
+	function classifyPose() {
+
+
+	}
+
+  </script>
+</head>
+
+<body>
+
+  <div id="main">
+  <div id="sketch-div"></div>
+  <div id="poetryContent">
+  <select id="poems"></select> 
+  <button class="myButton" onclick="randomSelect(selectPoems); update();">random</button>
+  <div id="poem" class="section">Loading...</div>
+
+  <select id="seeds"></select> 
+  <button class="myButton" onclick="randomSelect(selectSeeds); update();">random</button>
+  <button class="myButton" onclick="regenerate()">generate</button>
+  <p id="generated" class="section">Loading...</p>
+
+</div>
+</div>
+  <script>
+    let index = 0;
+
+    let selectPoems = document.querySelector('#poems');
+    let selectSeeds = document.querySelector('#seeds');
+    let poemElt = document.querySelector("#poem");
+    let generatedElt = document.querySelector("#generated");
+
+    function convertNewlines(text) {
+      return text.split('\n').join('<br/>').split('<|endoftext|>')[0];
+    }
+
+    function update() {
+      let key = selectPoems.value;
+      let poem = poems[key];
+      poemElt.innerHTML = poem.poem.join('<br/>');
+      let seed = selectSeeds.value;
+      generatedElt.innerHTML = convertNewlines(generated[seed][key][index]) + '...';
+      currentPoetryString = generated[seed][key][index];
+
+    }
+
+    function randomSelect(elt) {
+      let n = elt.options.length;
+      let i = Math.floor(Math.random() * n);
+      elt.value = elt.options[i].value;
+      regenerate();
+    }
+
+    // for python change poetry
+    function poseChangeRegenerate(predicttype) {
+      selectSeeds.value = predicttype;
+      selectSeeds.onchange = update;
+      regenerate()
+    }
+
+    // for python change period time
+    function poseOverTimeRegenerate() {
+      randomSelect(selectPoems); 
+      update();
+    }
+
+    function regenerate() {
+      index = (index + 1) % 10;
+      update();
+    }
+
+    Promise.all([
+      fetch('poems.json').then(e => e.json()),
+      fetch('generated.json').then(e => e.json())
+    ])
+      .then(files => {
+        poems = files[0];
+        generated = files[1];
+
+        let sortable = [];
+        for (key in poems) {
+          let poem = poems[key];
+          sortable.push([
+            poem['author'] + ' > ' + poem['title'],
+            key
+          ])
+        }
+        sortable.sort(function (a, b) {
+          return a[0].toLowerCase().localeCompare(b[0].toLowerCase());
+        });
+        sortable.forEach(item => {
+          let opt = document.createElement("option");
+          opt.text = item[0];
+          opt.value = item[1];
+          selectPoems.add(opt);
+        })
+
+        for (key in generated) {
+          let opt = document.createElement("option");
+          opt.text = key;
+          opt.value = key;
+          allSeeds.push(key);
+          selectSeeds.add(opt);
+        }
+        randomSelect(selectPoems);
+        randomSelect(selectSeeds);
+
+        selectSeeds.onchange = update;
+        selectPoems.onchange = update;
+        update();
+      })
+
+
+
+  </script>
+</body>
+
+</html>
