@@ -102,7 +102,8 @@
 
 	 function speakNew()
 	 {
-	    poseChangeRegenerate(predictPoseResult);
+	    poseChangeRegenerate(allPreMovement[allPreMovement.length-1]); // keep the last one is the different one
+      allPreMovement.push(predictPoseResult);
 	    isSpeak = true;
 	    speechVoice.speak(currentPoetryString);
 	    speechVoice.onEnd = speakEnd;
@@ -122,7 +123,8 @@
   	let poseModel;
   	let predictPoseResult;
   	let context;
-
+    let runTimes = 1;
+    var allPreMovement = new Array();
   	let mySound;
 
   	// speech recognition
@@ -159,7 +161,10 @@
   		})
   		poseResult = pose
   		predictPoseResult = predictions[highIndex].className
-
+      if(allPreMovement.indexOf(predictPoseResult) < 0 && allPreMovement.length < runTimes+1){
+           // have no this movement 
+           allPreMovement.push(predictPoseResult);
+      }
   		//console.log(highProbability,predictPoseResult);
   	}
 
@@ -229,6 +234,8 @@
 	  			speechVoice.speak(currentPoetryString);
 	  			speechVoice.onEnd = speakEnd;
 	  			speechVoice.onStart = speakBegin;
+          allPreMovement.push(currentSeed);
+          console.log(allPreMovement);
 	  		}else if(resultWord =='stop'){
 	  			speechVoice.stop()
 	  		}
@@ -251,6 +258,7 @@
 			totalTime = 0;
 			inCircle = 0;
 			isSpeak = false;
+      runTimes++;
 		}
 		console.log("speechEnd================")
 	}
@@ -313,7 +321,8 @@
       let poem = poems[key];
       poemElt.innerHTML = poem.poem.join('<br/>');
       let seed = selectSeeds.value;
-      generatedElt.innerHTML = convertNewlines(generated[seed][key][index]) + '...';
+      currentSeed = seed;
+      generatedElt.innerHTML = convertNewlines(generated[seed][key][index]);
       currentPoetryString = generated[seed][key][index];
 
     }
@@ -321,7 +330,7 @@
     function randomSelect(elt) {
       let n = elt.options.length;
       let i = Math.floor(Math.random() * n);
-      elt.value = elt.options[i].value;
+      elt.value = elt.options[i].value; // random select one from options
       regenerate();
     }
 
@@ -329,6 +338,7 @@
     function poseChangeRegenerate(predicttype) {
       selectSeeds.value = predicttype;
       selectSeeds.onchange = update;
+      randomSelect(selectPoems);
       regenerate()
     }
 
@@ -339,7 +349,8 @@
     }
 
     function regenerate() {
-      index = (index + 1) % 10;
+      //index = (index + 1) % 10;
+      index = Math.floor(Math.random() * 52)+52;
       update();
     }
 
@@ -353,7 +364,7 @@
 
         let sortable = [];
         for (key in poems) {
-          let poem = poems[key];
+          let poem = poems[key]; // key is the unique number, value is all infor of poetry
           sortable.push([
             poem['author'] + ' > ' + poem['title'],
             key
@@ -366,7 +377,7 @@
           let opt = document.createElement("option");
           opt.text = item[0];
           opt.value = item[1];
-          selectPoems.add(opt);
+          selectPoems.add(opt); // all original poetry, value is key
         })
 
         for (key in generated) {
@@ -374,7 +385,7 @@
           opt.text = key;
           opt.value = key;
           allSeeds.push(key);
-          selectSeeds.add(opt);
+          selectSeeds.add(opt); // all key 
         }
         randomSelect(selectPoems);
         randomSelect(selectSeeds);
