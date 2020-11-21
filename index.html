@@ -103,7 +103,7 @@
 	 function speakNew()
 	 {
 	    poseChangeRegenerate(allPreMovement[allPreMovement.length-1]); // keep the last one is the different one
-      allPreMovement.push(predictPoseResult);
+      //allPreMovement.push(predictPoseResult);
 	    isSpeak = true;
 	    speechVoice.speak(currentPoetryString);
 	    speechVoice.onEnd = speakEnd;
@@ -189,20 +189,18 @@
 
  	async function draw(){
   		background(0,20);
-  		fill(255);
-  		ellipse(mouseX, mouseY,20,20);
 	    push()
 	    translate(width*0.2, height*0.2);
 	    scale(0.5, 0.5);
-		if (poseResult) {
-		   const minPartConfidence = 0.5;
-		   tmPose.drawSkeleton(poseResult.keypoints, minPartConfidence, context); 
-		}
-		pop()
+		// if (poseResult) {
+		//    const minPartConfidence = 0.5;
+		//    tmPose.drawSkeleton(poseResult.keypoints, minPartConfidence, context); 
+		// }
+		  pop()
 
-		fill(255)
-		textSize(22)
-		text(predictPoseResult, 20, 40)
+		// fill(255)
+		// textSize(22)
+		// text(predictPoseResult, 20, 40)
 
 		fill(103,216,239)
 		textSize(36)
@@ -349,8 +347,7 @@
     }
 
     function regenerate() {
-      //index = (index + 1) % 10;
-      index = Math.floor(Math.random() * 52)+52;
+      index = (index + 1) % 10;
       update();
     }
 
